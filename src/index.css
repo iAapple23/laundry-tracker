@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; --tooltip-bg: #ffffff; --tooltip-fg: #1f2937; }
+.dark { color-scheme: dark; --tooltip-bg: #0b1220; --tooltip-fg: #e5e7eb; }
+
+.card { @apply bg-white border border-black/10 rounded-xl shadow-card dark:bg-gray-900/70 dark:border-white/5; }
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors;
+}
+
+.btn-primary {
+  @apply btn bg-brand hover:bg-brand-600 text-white;
+}
+
+.btn-secondary { @apply btn bg-white hover:bg-gray-100 text-gray-900 border border-black/10 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-100 dark:border-white/10; }
+
+.input, .select, .textarea { @apply w-full bg-white border border-black/10 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/60 dark:bg-gray-900/70 dark:border-white/10; }
+
+/* Readonly/derived fields */
+.readonly { @apply bg-gray-100 text-gray-500 border-black/10 cursor-not-allowed dark:bg-gray-800/60 dark:text-gray-300 dark:border-white/10; }
+
+.table {
+  @apply w-full text-sm;
+}
+.table th, .table td { @apply px-4 py-3; }
+.table thead { @apply text-gray-700 dark:text-gray-300; }
+.table tbody tr { @apply border-t border-black/10 dark:border-white/5; }

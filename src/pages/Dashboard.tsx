@@ -7,11 +7,8 @@ import { useMemo, useState } from 'react'
 export default function Dashboard() {
   const reports = useStore(s=>s.reports)
   const txs = useStore(s=>s.transactions)
-  const range = rangeThisMonth()
-  const year = range.from.getFullYear()
-  const { monthly } = computeTotals(reports, txs, year)
-  const months = yearMonths(year)
-  const [selectedYear, setSelectedYear] = useState(year)
+  const currentYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(currentYear)
   const yearOptions = useMemo(() => {
     const set = new Set<number>()
     set.add(new Date().getFullYear())
@@ -21,7 +18,10 @@ export default function Dashboard() {
     ;[2025, 2026, 2027, 2028].forEach(y=>set.add(y))
     return Array.from(set).sort((a,b)=>b-a)
   }, [reports, txs])
+
   const selectedAnnual = useMemo(() => computeTotals(reports, txs, selectedYear), [reports, txs, selectedYear])
+  const { monthly } = selectedAnnual
+  const months = yearMonths(selectedYear)
 
   const annualData = months.map((m, i)=>({
     month: m,
@@ -110,7 +110,7 @@ export default function Dashboard() {
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ChartCard title={`Monthly Summary (${year})`}>
+        <ChartCard title={`Monthly Summary (${selectedYear})`}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={annualData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />

@@ -17,6 +17,8 @@ export default function Dashboard() {
     set.add(new Date().getFullYear())
     reports.forEach(r=>set.add(r.year))
     txs.forEach(t=>set.add(new Date(t.date).getFullYear()))
+    // ensure these years are always present in the selector
+    ;[2025, 2026, 2027, 2028].forEach(y=>set.add(y))
     return Array.from(set).sort((a,b)=>b-a)
   }, [reports, txs])
   const selectedAnnual = useMemo(() => computeTotals(reports, txs, selectedYear), [reports, txs, selectedYear])

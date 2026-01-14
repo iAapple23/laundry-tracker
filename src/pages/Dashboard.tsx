@@ -78,7 +78,7 @@ export default function Dashboard() {
           <select
             value={selectedYear}
             onChange={e=>setSelectedYear(Number(e.target.value))}
-            className="bg-white border border-blue-500 text-blue-700 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-black/10 dark:border-white/10 rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300 dark:focus:ring-blue-600"
           >
             {yearOptions.map(y => (
               <option key={y} value={y}>{y}</option>

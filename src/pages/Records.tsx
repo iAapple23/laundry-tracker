@@ -130,71 +130,138 @@ export default function Records() {
         <p className="text-gray-400">View, edit, or delete your past records.</p>
       </div>
       <div className="card p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <input className="input max-w-lg" placeholder="Filter records (month/year/type/description)..." value={filter} onChange={e=>{ setFilter(e.target.value); setPage(0) }} />
+        <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <input className="input w-full sm:max-w-lg" placeholder="Filter records (month/year/type/description)..." value={filter} onChange={e=>{ setFilter(e.target.value); setPage(0) }} />
           <ImportExport />
         </div>
-        <table className="table">
-          <thead>
-            <tr>
-              <th className="text-left">
-                <div className="inline-flex items-center gap-1 select-none cursor-pointer text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-brand/20 dark:hover:bg-brand/30" onClick={()=> setSort(s=> ({ key:'month', dir: s.key==='month' && s.dir==='desc' ? 'asc' : 'desc' }))}>
-                  <span>Month</span>
-                  <span className="text-xs opacity-70">{sort.key==='month' ? (sort.dir==='asc'?'↑':'↓') : '↕'}</span>
-                </div>
-              </th>
-              <th className="text-left">
-                <div className="inline-flex items-center gap-1 select-none cursor-pointer text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-brand/20 dark:hover:bg-brand/30" onClick={()=> setSort(s=> ({ key:'year', dir: s.key==='year' && s.dir==='desc' ? 'asc' : 'desc' }))}>
-                  <span>Year</span>
-                  <span className="text-xs opacity-70">{sort.key==='year' ? (sort.dir==='asc'?'↑':'↓') : '↕'}</span>
-                </div>
-              </th>
-              <th>Type</th>
-              <th>Week</th>
-              <th>Description</th>
-              <th className="text-right">
-                <div className="inline-flex items-center gap-1 select-none cursor-pointer text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-brand/20 dark:hover:bg-brand/30" onClick={()=> setSort(s=> ({ key:'amount', dir: s.key==='amount' && s.dir==='desc' ? 'asc' : 'desc' }))}>
-                  <span>Amount</span>
-                  <span className="text-xs opacity-70">{sort.key==='amount' ? (sort.dir==='asc'?'↑':'↓') : '↕'}</span>
-                </div>
-              </th>
-              <th className="w-36 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageData.map(r => (
-              <tr key={r.id} className="">
-                <td>{months[r.month]}</td>
-                <td>{r.year}</td>
-                <td>{r.type}</td>
-                <td>{r.week ? (()=>{ const rng = monthWeekRange(r.year, r.month, r.week!); return rng.valid && rng.from && rng.to ? `Week ${r.week} (${rng.from.toLocaleDateString(undefined,{month:'short', day:'numeric'})} - ${rng.to.toLocaleDateString(undefined,{month:'short', day:'numeric'})})` : `Week ${r.week}` })() : '-'}</td>
-                <td className="truncate max-w-[480px]">{r.description}</td>
-                <td className={`text-right ${r.amount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{formatCurrency(r.amount)}</td>
-                <td className="text-right">
-                  <div className="relative inline-block text-left" onClick={(e)=> e.stopPropagation()}>
-                    <button type="button" title="Open record menu" className="btn bg-black/10 text-gray-700 border border-black/10 hover:bg-black/20 dark:bg-white/10 dark:text-gray-200 dark:border-white/10" onClick={(e)=>{ e.stopPropagation(); setMenuOpen(id => id===r.id ? null : r.id) }}>⋯</button>
-                    {menuOpen===r.id && (
-                      <div className="absolute right-0 mt-2 w-36 rounded-md bg-white border border-black/10 shadow-card dark:bg-gray-900 dark:border-white/10 z-10" onClick={(e)=> e.stopPropagation()}>
-                        <button type="button" title="Edit record" className="w-full text-left px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10" onClick={()=>{ setEditing(r); setMenuOpen(null) }}>Edit</button>
-                        <button type="button" title="Delete record" className="w-full text-left px-3 py-2 text-red-600 hover:bg-black/5 dark:hover:bg-white/10" onClick={()=>{ 
-                          setMenuOpen(null);
-                          const label = r.type;
-                          if (window.confirm(`Delete this ${label}? This action cannot be undone.`)) {
-                            if (r.source==='report') { deleteReport(r.id); toast.success('Record deleted') }
-                            else { deleteTransaction(r.id); toast.success('Record deleted') }
-                          }
-                        }}>Delete</button>
-                      </div>
-                    )}
+        
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="table w-full">
+            <thead>
+              <tr>
+                <th className="text-left">
+                  <div className="inline-flex items-center gap-1 select-none cursor-pointer text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-brand/20 dark:hover:bg-brand/30" onClick={()=> setSort(s=> ({ key:'month', dir: s.key==='month' && s.dir==='desc' ? 'asc' : 'desc' }))}>
+                    <span>Month</span>
+                    <span className="text-xs opacity-70">{sort.key==='month' ? (sort.dir==='asc'?'↑':'↓') : '↕'}</span>
                   </div>
-                </td>
+                </th>
+                <th className="text-left">
+                  <div className="inline-flex items-center gap-1 select-none cursor-pointer text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-brand/20 dark:hover:bg-brand/30" onClick={()=> setSort(s=> ({ key:'year', dir: s.key==='year' && s.dir==='desc' ? 'asc' : 'desc' }))}>
+                    <span>Year</span>
+                    <span className="text-xs opacity-70">{sort.key==='year' ? (sort.dir==='asc'?'↑':'↓') : '↕'}</span>
+                  </div>
+                </th>
+                <th>Type</th>
+                <th>Week</th>
+                <th>Description</th>
+                <th className="text-right">
+                  <div className="inline-flex items-center gap-1 select-none cursor-pointer text-gray-600 dark:text-gray-300 px-2 py-1 rounded hover:bg-brand/20 dark:hover:bg-brand/30" onClick={()=> setSort(s=> ({ key:'amount', dir: s.key==='amount' && s.dir==='desc' ? 'asc' : 'desc' }))}>
+                    <span>Amount</span>
+                    <span className="text-xs opacity-70">{sort.key==='amount' ? (sort.dir==='asc'?'↑':'↓') : '↕'}</span>
+                  </div>
+                </th>
+                <th className="w-36 text-right">Actions</th>
               </tr>
-            ))}
-            {filtered.length===0 && (
-              <tr><td colSpan={7} className="text-center text-gray-400 py-10">No records yet</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pageData.map(r => (
+                <tr key={r.id} className="">
+                  <td>{months[r.month]}</td>
+                  <td>{r.year}</td>
+                  <td>{r.type}</td>
+                  <td>{r.week ? (()=>{ const rng = monthWeekRange(r.year, r.month, r.week!); return rng.valid && rng.from && rng.to ? `Week ${r.week} (${rng.from.toLocaleDateString(undefined,{month:'short', day:'numeric'})} - ${rng.to.toLocaleDateString(undefined,{month:'short', day:'numeric'})})` : `Week ${r.week}` })() : '-'}</td>
+                  <td className="truncate max-w-[480px]">{r.description}</td>
+                  <td className={`text-right ${r.amount < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{formatCurrency(r.amount)}</td>
+                  <td className="text-right">
+                    <div className="relative inline-block text-left" onClick={(e)=> e.stopPropagation()}>
+                      <button type="button" title="Open record menu" className="btn bg-black/10 text-gray-700 border border-black/10 hover:bg-black/20 dark:bg-white/10 dark:text-gray-200 dark:border-white/10" onClick={(e)=>{ e.stopPropagation(); setMenuOpen(id => id===r.id ? null : r.id) }}>⋯</button>
+                      {menuOpen===r.id && (
+                        <div className="absolute right-0 mt-2 w-36 rounded-md bg-white border border-black/10 shadow-card dark:bg-gray-900 dark:border-white/10 z-10" onClick={(e)=> e.stopPropagation()}>
+                          <button type="button" title="Edit record" className="w-full text-left px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10" onClick={()=>{ setEditing(r); setMenuOpen(null) }}>Edit</button>
+                          <button type="button" title="Delete record" className="w-full text-left px-3 py-2 text-red-600 hover:bg-black/5 dark:hover:bg-white/10" onClick={()=>{ 
+                            setMenuOpen(null);
+                            const label = r.type;
+                            if (window.confirm(`Delete this ${label}? This action cannot be undone.`)) {
+                              if (r.source==='report') { deleteReport(r.id); toast.success('Record deleted') }
+                              else { deleteTransaction(r.id); toast.success('Record deleted') }
+                            }
+                          }}>Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length===0 && (
+                <tr><td colSpan={7} className="text-center text-gray-400 py-10">No records yet</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="lg:hidden space-y-3">
+          {pageData.length === 0 ? (
+            <div className="text-center text-gray-400 py-10">No records yet</div>
+          ) : (
+            pageData.map(r => (
+              <div key={r.id} className="bg-black/5 dark:bg-white/5 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-semibold text-lg">{r.type}</div>
+                  <div className={`text-lg font-bold ${r.amount < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                    {formatCurrency(r.amount)}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-500">Month:</span>
+                    <div className="font-medium">{months[r.month]}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Year:</span>
+                    <div className="font-medium">{r.year}</div>
+                  </div>
+                  {r.week && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Week:</span>
+                      <div className="font-medium text-xs">
+                        {(()=>{ const rng = monthWeekRange(r.year, r.month, r.week!); return rng.valid && rng.from && rng.to ? `Week ${r.week} (${rng.from.toLocaleDateString(undefined,{month:'short', day:'numeric'})} - ${rng.to.toLocaleDateString(undefined,{month:'short', day:'numeric'})})` : `Week ${r.week}` })()}
+                      </div>
+                    </div>
+                  )}
+                  {r.description && (
+                    <div className="col-span-2">
+                      <span className="text-gray-500">Description:</span>
+                      <div className="font-medium text-xs">{r.description}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-black/10 dark:border-white/10">
+                  <button 
+                    className="flex-1 btn btn-sm bg-brand/10 text-brand hover:bg-brand/20 text-xs py-1"
+                    onClick={()=>{ setEditing(r); setMenuOpen(null) }}
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    className="flex-1 btn btn-sm bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-xs py-1"
+                    onClick={()=>{ 
+                      const label = r.type;
+                      if (window.confirm(`Delete this ${label}? This action cannot be undone.`)) {
+                        if (r.source==='report') { deleteReport(r.id); toast.success('Record deleted') }
+                        else { deleteTransaction(r.id); toast.success('Record deleted') }
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" title="Go to previous page" className="btn btn-secondary" disabled={page===0} onClick={()=> setPage(p=>Math.max(0, p-1))}>Previous</button>
           <button type="button" title="Go to next page" className="btn btn-secondary" disabled={page >= pageCount-1 || pageCount===0} onClick={()=> setPage(p=>Math.min(pageCount-1, p+1))}>Next</button>

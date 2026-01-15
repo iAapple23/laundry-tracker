@@ -5,7 +5,7 @@ import DateFilter from '@/components/DateFilter'
 import { months, monthlyStats, pctChange, prevMonthYear, totalsInRange, rangeThisMonth, formatRange, monthWeekRange } from '@/lib/utils'
 import { useStore } from '@/store'
 import { supabase } from '@/lib/supabase'
-import { useMemo, useState, useRef } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Label } from 'recharts'
 import type { Transaction, WeeklyReport } from '@/types'
 import { toast } from '@/components/ToastContainer'
@@ -15,7 +15,8 @@ export default function DataEntry() {
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth())
   const [year, setYear] = useState(now.getFullYear())
-  const [week, setWeek] = useState(1)
+  const weekOf = (d: Date) => Math.min(5, Math.floor((d.getDate()-1)/7)+1)
+  const [week, setWeek] = useState(weekOf(now))
   const [form, setForm] = useState({
     washer1: '', washer2: '', dryer1: '', dryer2: '', online: '', offline: '', moneyCollected: '', notes: ''
   })
@@ -24,17 +25,29 @@ export default function DataEntry() {
   const [savingWeekly, setSavingWeekly] = useState(false)
   const [savedWeekly, setSavedWeekly] = useState(false)
 
+  // Auto-update week when month/year changes (for weekly report)
+  useEffect(() => {
+    const currentDate = new Date(year, month, 1)
+    setWeek(weekOf(currentDate))
+  }, [month, year])
+
   // Total Sales reflects Online + Offline only (parse text safely)
   const toNum = (v: any) => (v === '' || v === undefined ? 0 : Number(v) || 0)
   const total = toNum(form.online) + toNum(form.offline)
 
-  const weekOf = (d: Date) => Math.min(5, Math.floor((d.getDate()-1)/7)+1)
   const [tx, setTx] = useState<{ type: 'expense'|'refund'; month: number; year: number; week: number; amount: string; description: string }>(
     { type: 'expense', month: now.getMonth(), year: now.getFullYear(), week: weekOf(now), amount: '', description: '' }
   )
   const [txError, setTxError] = useState<string>("")
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [showMonthTx, setShowMonthTx] = useState<boolean>(true)
+  
+  // Auto-update week when month/year changes
+  useEffect(() => {
+    const currentDate = new Date(tx.year, tx.month, 1)
+    const currentWeek = weekOf(currentDate)
+    setTx(t => ({ ...t, week: currentWeek }))
+  }, [tx.month, tx.year])
   const monthly = useMemo(()=> monthlyStats(reports, transactions, year, month), [reports, transactions, month, year])
   const { offlineGap, offlineTotal, collectedTotal } = useMemo(() => {
     const inMonth = reports.filter(r => r.year === year && r.month === month)

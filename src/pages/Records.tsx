@@ -64,13 +64,15 @@ export default function Records() {
   const transactions = storeTransactions
 
   const rows: Row[] = useMemo(()=>{
+    const weekOf = (d: Date) => Math.min(5, Math.floor((d.getDate()-1)/7)+1)
     const a: Row[] = reports.map(r=>{
       // Use the report's selected month/year (not createdAt) for display/sorting
       return { id:r.id, date: r.createdAt, month: r.month, year: r.year, type:'Weekly Report', week: r.week, description: r.notes, amount: r.totalSales, source:'report' as const }
     })
     const b: Row[] = transactions.map(t=>{
       const d = new Date(t.date)
-      return { id:t.id, date: t.date, month: d.getMonth(), year: d.getFullYear(), type: t.type==='expense'?'Expenses':'Refund', week: undefined, description: t.description, amount: t.amount, source:'tx' as const }
+      const calculatedWeek = weekOf(d)
+      return { id:t.id, date: t.date, month: d.getMonth(), year: d.getFullYear(), type: t.type==='expense'?'Expenses':'Refund', week: calculatedWeek, description: t.description, amount: t.amount, source:'tx' as const }
     })
     return [...a, ...b].sort((x,y)=>+new Date(y.date)-+new Date(x.date))
   },[reports, transactions])

@@ -27,8 +27,15 @@ export default function DataEntry() {
 
   // Auto-update week when month/year changes (for weekly report)
   useEffect(() => {
-    const currentDate = new Date(year, month, 1)
-    setWeek(weekOf(currentDate))
+    // If the selected month/year matches current month/year, use today's date
+    // Otherwise, use the first day of the selected month
+    let dateToUse: Date
+    if (year === now.getFullYear() && month === now.getMonth()) {
+      dateToUse = now  // Use current date to get actual current week
+    } else {
+      dateToUse = new Date(year, month, 1)  // Use first day of selected month
+    }
+    setWeek(weekOf(dateToUse))
   }, [month, year])
 
   // Total Sales reflects Online + Offline only (parse text safely)
@@ -44,8 +51,15 @@ export default function DataEntry() {
   
   // Auto-update week when month/year changes
   useEffect(() => {
-    const currentDate = new Date(tx.year, tx.month, 1)
-    const currentWeek = weekOf(currentDate)
+    // If the selected month/year matches current month/year, use today's date
+    // Otherwise, use the first day of the selected month
+    let dateToUse: Date
+    if (tx.year === now.getFullYear() && tx.month === now.getMonth()) {
+      dateToUse = now  // Use current date to get actual current week
+    } else {
+      dateToUse = new Date(tx.year, tx.month, 1)  // Use first day of selected month
+    }
+    const currentWeek = weekOf(dateToUse)
     setTx(t => ({ ...t, week: currentWeek }))
   }, [tx.month, tx.year])
   const monthly = useMemo(()=> monthlyStats(reports, transactions, year, month), [reports, transactions, month, year])

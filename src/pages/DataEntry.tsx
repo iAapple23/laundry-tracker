@@ -121,7 +121,7 @@ export default function DataEntry() {
           const name = item.name || item.payload?.name || `Series ${index+1}`
           return (
             <div key={`${item.dataKey ?? name}-${index}`} className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full" style={{ background: color }}></span>
+              <span className="color-dot-dynamic" style={{ '--dot-color': color } as any}></span>
               <span>{name}: RM {Number(value).toFixed(2)}</span>
             </div>
           )
@@ -239,22 +239,31 @@ export default function DataEntry() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="card p-5 space-y-4">
           <div className="text-lg font-semibold">Weekly Report</div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-            <select className="select" value={month} onChange={e=>setMonth(Number(e.target.value))}>
-              {months.map((m,i)=> <option value={i} key={m}>{m}</option>)}
-            </select>
-            <select className="select" value={year} onChange={e=>setYear(Number(e.target.value))}>
-              {Array.from({length:6},(_,k)=>now.getFullYear()-2+k).map(y=> <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select className="select w-auto min-w-[160px]" value={week} onChange={e=>setWeek(Number(e.target.value))}>
-              {[1,2,3,4,5].map(w=> {
-                const r = monthWeekRange(year, month, w)
-                const label = r.valid && r.from && r.to
-                  ? `Week ${w} (${r.from.toLocaleDateString(undefined,{month:'short', day:'numeric'})} - ${r.to.toLocaleDateString(undefined,{month:'short', day:'numeric'})})`
-                  : `Week ${w} (N/A)`
-                return <option key={w} value={w} disabled={!r.valid}>{label}</option>
-              })}
-            </select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+            <div>
+              <label htmlFor="report-month" className="text-xs text-gray-400">Month</label>
+              <select id="report-month" className="select" value={month} onChange={e=>setMonth(Number(e.target.value))}>
+                {months.map((m,i)=> <option value={i} key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="report-year" className="text-xs text-gray-400">Year</label>
+              <select id="report-year" className="select" value={year} onChange={e=>setYear(Number(e.target.value))}>
+                {Array.from({length:6},(_,k)=>now.getFullYear()-2+k).map(y=> <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="report-week" className="text-xs text-gray-400">Week</label>
+              <select id="report-week" className="select w-auto min-w-[160px]" value={week} onChange={e=>setWeek(Number(e.target.value))}>
+                {[1,2,3,4,5].map(w=> {
+                  const r = monthWeekRange(year, month, w)
+                  const label = r.valid && r.from && r.to
+                    ? `Week ${w} (${r.from.toLocaleDateString(undefined,{month:'short', day:'numeric'})} - ${r.to.toLocaleDateString(undefined,{month:'short', day:'numeric'})})`
+                    : `Week ${w} (N/A)`
+                  return <option key={w} value={w} disabled={!r.valid}>{label}</option>
+                })}
+              </select>
+            </div>
           </div>
           {(() => { const r = monthWeekRange(year, month, week); return r.valid && r.from && r.to ? (
             <div className="text-xs text-gray-600 dark:text-gray-300">Selected range: {r.from.toLocaleDateString()} - {r.to.toLocaleDateString()}</div>
@@ -272,7 +281,7 @@ export default function DataEntry() {
             ] as const).map(([k,label])=> (
               <div key={k}>
                 <label className="text-xs text-gray-400">{label}</label>
-                <input className={`input ${formErr[k] ? 'border-red-500 focus:ring-red-500' : ''}`} type="text" value={(form as any)[k]} onChange={e=>{ const v=e.target.value; setForm(f=>({...f,[k]: v })); if (v.trim()==='' || isFinite(Number(v))) setFormErr(err=>({...err,[k]: ''})); }} />
+                <input title={label} className={`input ${formErr[k] ? 'border-red-500 focus:ring-red-500' : ''}`} type="text" value={(form as any)[k]} onChange={e=>{ const v=e.target.value; setForm(f=>({...f,[k]: v })); if (v.trim()==='' || isFinite(Number(v))) setFormErr(err=>({...err,[k]: ''})); }} />
                 {formErr[k] && <div className="mt-1 text-xs text-red-600 dark:text-red-400">{formErr[k]}</div>}
               </div>
             ))}
@@ -281,19 +290,19 @@ export default function DataEntry() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-400">Money Collected (RM)</label>
-              <input className="input" type="text" value={form.moneyCollected} onChange={e=> setForm(f=>({...f, moneyCollected: e.target.value}))} />
+              <input title="Money Collected" className="input" type="text" value={form.moneyCollected} onChange={e=> setForm(f=>({...f, moneyCollected: e.target.value}))} />
             </div>
             <div>
               <label className="text-xs text-gray-400">Sales (RM)</label>
-              <input className="input readonly" readOnly value={Number.isFinite(total) ? total.toFixed(2) : ''} placeholder="Auto" />
+              <input title="Sales (auto-calculated)" className="input readonly" readOnly value={Number.isFinite(total) ? total.toFixed(2) : ''} placeholder="Auto" />
             </div>
             <div className="sm:col-span-2">
               <label className="text-xs text-gray-400">Notes</label>
-              <textarea className="textarea" rows={3} value={form.notes} onChange={e=> setForm(f=>({...f, notes: e.target.value}))} />
+              <textarea title="Notes" className="textarea" rows={3} value={form.notes} onChange={e=> setForm(f=>({...f, notes: e.target.value}))} />
             </div>
           </div>
           <div className="flex items-center gap-3 pt-2">
-            <button className="btn-primary" onClick={()=>{
+            <button className="btn-primary" title="Save weekly report" onClick={()=>{
               const fields = ['washer1','washer2','dryer1','dryer2','online','offline'] as const
               const errs: {[k:string]: string} = {}
               for (const k of fields) {
@@ -333,13 +342,13 @@ export default function DataEntry() {
               <div className="bg-black/5 dark:bg-white/10 rounded-full p-1 inline-flex w-full">
                 <button
                   type="button"
-                  aria-pressed={tx.type==='expense'}
+                  title="Select Expense"
                   className={`flex-1 rounded-full px-4 py-2 text-sm transition-colors ${tx.type==='expense' ? 'bg-white text-brand border border-black/10 dark:bg-gray-900 dark:border-white/10' : 'text-gray-600 dark:text-gray-300'}`}
                   onClick={()=> setTx(t=>({...t, type:'expense'}))}
                 >Expense</button>
                 <button
                   type="button"
-                  aria-pressed={tx.type==='refund'}
+                  title="Select Refund"
                   className={`flex-1 rounded-full px-4 py-2 text-sm transition-colors ${tx.type==='refund' ? 'bg-white text-brand border border-black/10 dark:bg-gray-900 dark:border-white/10' : 'text-gray-600 dark:text-gray-300'}`}
                   onClick={()=> setTx(t=>({...t, type:'refund'}))}
                 >Refund</button>
@@ -363,13 +372,13 @@ export default function DataEntry() {
             <div className="lg:col-span-2">
               <label className="text-xs text-gray-400">Date</label>
               <div className="grid grid-cols-3 gap-3 mt-1">
-                <select className="select" value={tx.month} onChange={e=> setTx(t=>({...t, month: Number(e.target.value)}))}>
+                <select className="select" title="Select month" value={tx.month} onChange={e=> setTx(t=>({...t, month: Number(e.target.value)}))}>
                   {months.map((m,i)=> <option key={m} value={i}>{m}</option>)}
                 </select>
-                <select className="select" value={tx.year} onChange={e=> setTx(t=>({...t, year: Number(e.target.value)}))}>
+                <select className="select" title="Select year" value={tx.year} onChange={e=> setTx(t=>({...t, year: Number(e.target.value)}))}>
                   {Array.from({length:6},(_,k)=>now.getFullYear()-2+k).map(y=> <option key={y} value={y}>{y}</option>)}
                 </select>
-                <select className="select" value={tx.week} onChange={e=> setTx(t=>({...t, week: Number(e.target.value)}))}>
+                <select className="select" title="Select week" value={tx.week} onChange={e=> setTx(t=>({...t, week: Number(e.target.value)}))}>
                   {[1,2,3,4,5].map(w=> {
                     const r = monthWeekRange(tx.year, tx.month, w)
                     const label = r.valid && r.from && r.to ? `Week ${w} (${r.from.getDate()} - ${r.to.getDate()})` : `Week ${w} (N/A)`
@@ -395,7 +404,7 @@ export default function DataEntry() {
               const date = (r.valid && r.to) ? r.to : new Date(tx.year, tx.month, 1)
               addTransaction({
                 type: tx.type,
-                amount: amt,
+                amount: -Math.abs(amt),
                 description: tx.description || undefined,
                 date: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
               })
@@ -459,9 +468,9 @@ export default function DataEntry() {
             const offline = mReports.reduce((s,r)=> s + (r.offline||0), 0)
             return (
               <div className="mt-2 mb-8 text-xs text-gray-600 dark:text-gray-300 flex items-center justify-center gap-3">
-                <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background:'#6366f1' }}></span> Online: {online.toFixed(2)}</span>
+                <span className="inline-flex items-center gap-1"><span className="color-dot-tooltip color-dot-indigo"></span> Online: {online.toFixed(2)}</span>
                 <span className="opacity-60">|</span>
-                <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background:'#3b82f6' }}></span> Offline: {offline.toFixed(2)}</span>
+                <span className="inline-flex items-center gap-1"><span className="color-dot-tooltip color-dot-blue"></span> Offline: {offline.toFixed(2)}</span>
               </div>
             )
           })()}
@@ -499,9 +508,9 @@ export default function DataEntry() {
             </div>
           </div>
           <div className="mt-2 mb-8 text-xs text-gray-600 dark:text-gray-300 flex items-center justify-center gap-3">
-            <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background:'#60a5fa' }}></span> Offline: {offlineTotal.toFixed(2)}</span>
+            <span className="inline-flex items-center gap-1"><span className="color-dot-tooltip color-dot-light-blue"></span> Offline: {offlineTotal.toFixed(2)}</span>
             <span className="opacity-60">|</span>
-            <span className="inline-flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-full" style={{ background:'#10b981' }}></span> Collected: {collectedTotal.toFixed(2)}</span>
+            <span className="inline-flex items-center gap-1"><span className="color-dot-tooltip color-dot-emerald"></span> Collected: {collectedTotal.toFixed(2)}</span>
           </div>
         </ChartCard>
 
@@ -533,7 +542,7 @@ export default function DataEntry() {
           <div className="mt-2 mb-8 text-xs text-gray-600 dark:text-gray-300 flex items-center justify-center gap-3 flex-wrap">
             {machineRawUsage.map((item, index) => (
               <span key={item.name} className="inline-flex items-center gap-1">
-                <span className="inline-block w-3 h-3 rounded-full" style={{ background: machineUsageColors[index % machineUsageColors.length] }}></span>
+                <span className="color-dot-dynamic" style={{ '--dot-color': machineUsageColors[index % machineUsageColors.length] } as any}></span>
                 {item.name}: {item.load}
               </span>
             ))}
@@ -598,28 +607,28 @@ function TxEditModal({ tx, onClose, onSave }: { tx: Transaction, onClose: ()=>vo
       <div className="relative z-50 w-[640px] max-w-[95vw] rounded-xl bg-white border border-black/10 shadow-card dark:bg-gray-900 dark:border-white/10 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="text-lg font-semibold">Edit Transaction</div>
-          <button className="btn bg-black/10 text-gray-700 border border-black/10 hover:bg-black/20 dark:bg-white/10 dark:text-gray-200 dark:border-white/10" onClick={onClose}>×</button>
+          <button type="button" title="Close" className="btn bg-black/10 text-gray-700 border border-black/10 hover:bg-black/20 dark:bg-white/10 dark:text-gray-200 dark:border-white/10" onClick={onClose}>×</button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="flex gap-2 sm:col-span-2">
-            <button className={`btn flex-1 ${form.type==='expense'?'bg-brand text-white':'bg-black/10 text-gray-700 dark:bg-gray-800 dark:text-gray-100'}`} onClick={()=> setForm(f=>({...f, type:'expense'}))}>Expense</button>
-            <button className={`btn flex-1 ${form.type==='refund'?'bg-brand text-white':'bg-black/10 text-gray-700 dark:bg-gray-800 dark:text-gray-100'}`} onClick={()=> setForm(f=>({...f, type:'refund'}))}>Refund</button>
+            <button type="button" title="Mark as expense" className={`btn flex-1 ${form.type==='expense'?'bg-brand text-white':'bg-black/10 text-gray-700 dark:bg-gray-800 dark:text-gray-100'}`} onClick={()=> setForm(f=>({...f, type:'expense'}))}>Expense</button>
+            <button type="button" title="Mark as refund" className={`btn flex-1 ${form.type==='refund'?'bg-brand text-white':'bg-black/10 text-gray-700 dark:bg-gray-800 dark:text-gray-100'}`} onClick={()=> setForm(f=>({...f, type:'refund'}))}>Refund</button>
           </div>
           <div>
-            <label className="text-xs text-gray-400">Month</label>
-            <select className="select" value={tMonth} onChange={e=> setTMonth(Number(e.target.value))}>
+            <label htmlFor="edit-tx-month" className="text-xs text-gray-400">Month</label>
+            <select id="edit-tx-month" title="Select month" className="select" value={tMonth} onChange={e=> setTMonth(Number(e.target.value))}>
               {months.map((m,i)=> <option key={m} value={i}>{m}</option>)}
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-400">Year</label>
-            <select className="select" value={tYear} onChange={e=> setTYear(Number(e.target.value))}>
+            <label htmlFor="edit-tx-year" className="text-xs text-gray-400">Year</label>
+            <select id="edit-tx-year" title="Select year" className="select" value={tYear} onChange={e=> setTYear(Number(e.target.value))}>
               {Array.from({length:6},(_,k)=>new Date().getFullYear()-2+k).map(y=> <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs text-gray-400">Week</label>
-            <select className="select w-full" value={tWeek} onChange={e=> setTWeek(Number(e.target.value))}>
+            <label htmlFor="edit-tx-week" className="text-xs text-gray-400">Week</label>
+            <select id="edit-tx-week" title="Select week" className="select w-full" value={tWeek} onChange={e=> setTWeek(Number(e.target.value))}>
               {[1,2,3,4,5].map(w=>{
                 const r = monthWeekRange(tYear, tMonth, w)
                 const label = r.valid && r.from && r.to
@@ -630,13 +639,13 @@ function TxEditModal({ tx, onClose, onSave }: { tx: Transaction, onClose: ()=>vo
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs text-gray-400">Amount (RM)</label>
-            <input className={`input ${amtErr ? 'border-red-500 focus:ring-red-500' : ''}`} type="text" value={amtStr} onChange={e=>{ const v=e.target.value; setAmtStr(v); if (v.trim()==='' || isFinite(Number(v))) setAmtErr('') }} />
+            <label htmlFor="edit-tx-amount" className="text-xs text-gray-400">Amount (RM)</label>
+            <input id="edit-tx-amount" title="Amount" className={`input ${amtErr ? 'border-red-500 focus:ring-red-500' : ''}`} type="text" value={amtStr} onChange={e=>{ const v=e.target.value; setAmtStr(v); if (v.trim()==='' || isFinite(Number(v))) setAmtErr('') }} />
             {amtErr && <div className="mt-1 text-xs text-red-600 dark:text-red-400">{amtErr}</div>}
           </div>
           <div className="sm:col-span-2">
-            <label className="text-xs text-gray-400">Description</label>
-            <textarea className="textarea" rows={3} value={form.description||''} onChange={e=> setForm(f=>({...f, description: e.target.value }))} />
+            <label htmlFor="edit-tx-desc" className="text-xs text-gray-400">Description</label>
+            <textarea id="edit-tx-desc" title="Description" className="textarea" rows={3} value={form.description||''} onChange={e=> setForm(f=>({...f, description: e.target.value }))} />
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">

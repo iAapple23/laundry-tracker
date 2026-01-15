@@ -4,6 +4,7 @@ import Delta from '@/components/Delta'
 import DateFilter from '@/components/DateFilter'
 import { months, monthlyStats, pctChange, prevMonthYear, totalsInRange, rangeThisMonth, formatRange, monthWeekRange } from '@/lib/utils'
 import { useStore } from '@/store'
+import { supabase } from '@/lib/supabase'
 import { useMemo, useState, useRef } from 'react'
 import { BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Label } from 'recharts'
 import type { Transaction, WeeklyReport } from '@/types'
@@ -302,7 +303,7 @@ export default function DataEntry() {
             </div>
           </div>
           <div className="flex items-center gap-3 pt-2">
-            <button className="btn-primary" title="Save weekly report" onClick={()=>{
+            <button className="btn-primary" title="Save weekly report" onClick={async ()=>{
               const fields = ['washer1','washer2','dryer1','dryer2','online','offline'] as const
               const errs: {[k:string]: string} = {}
               for (const k of fields) {
@@ -313,7 +314,7 @@ export default function DataEntry() {
               if (Object.keys(errs).length>0) { setBannerMsg('Please fix the highlighted fields.'); return }
               setSavingWeekly(true)
               try {
-                addReport({
+                const newReport = {
                   year, month, week: week as any,
                   washer1: Number(form.washer1)||0,
                   washer2: Number(form.washer2)||0,
@@ -323,10 +324,39 @@ export default function DataEntry() {
                   offline: Number(form.offline)||0,
                   moneyCollected: Number(form.moneyCollected)||0,
                   notes: form.notes||undefined,
-                })
+                }
+                // Add to local store
+                addReport(newReport)
+                // Persist to Supabase
+                const report = useStore.getState().reports.find(r => 
+                  r.year === year && r.month === month && r.week === week
+                )
+                if (report) {
+                  const weekRange = monthWeekRange(year, month, week)
+                  const { error } = await supabase.from('weekly_reports').insert([{
+                    year: report.year,
+                    month: report.month,
+                    week_start: weekRange.from?.toISOString().split('T')[0],
+                    week_end: weekRange.to?.toISOString().split('T')[0],
+                    washer1_sales: report.washer1,
+                    washer2_sales: report.washer2,
+                    dryer1_sales: report.dryer1,
+                    dryer2_sales: report.dryer2,
+                    online_sales: report.online,
+                    offline_sales: report.offline,
+                    money_collected: report.moneyCollected,
+                    total_sales: report.totalSales,
+                    notes: report.notes,
+                  }])
+                  if (error) throw error
+                }
                 setSavedWeekly(true)
                 setForm({ washer1:'', washer2:'', dryer1:'', dryer2:'', online:'', offline:'', moneyCollected:'', notes:'' })
                 toast.success('Weekly report saved')
+              } catch (err: any) {
+                console.error('Save error:', err)
+                console.error('Error details:', err?.message, err?.code, err?.details)
+                toast.error(err?.message || 'Failed to save report')
               } finally {
                 setSavingWeekly(false)
               }
@@ -396,20 +426,43 @@ export default function DataEntry() {
           {txError && <div className="text-xs text-red-600 dark:text-red-400">{txError}</div>}
           <div className="flex items-center justify-end gap-3">
             <button className="btn-secondary" onClick={()=>{ setTx({ type:'expense', month: now.getMonth(), year: now.getFullYear(), week: Math.min(5, Math.floor((now.getDate()-1)/7)+1), amount:'', description:'' }); setTxError('') }}>Clear</button>
-            <button className="btn-primary" onClick={()=>{
+            <button className="btn-primary" onClick={async ()=>{
               const amt = Number(tx.amount)
               if (!isFinite(amt) || amt<=0) { setTxError('Enter a valid positive amount'); return }
               setTxError('')
               const r = monthWeekRange(tx.year, tx.month, tx.week)
               const date = (r.valid && r.to) ? r.to : new Date(tx.year, tx.month, 1)
-              addTransaction({
-                type: tx.type,
-                amount: -Math.abs(amt),
-                description: tx.description || undefined,
-                date: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
-              })
-              setTx(t=>({...t, amount:'', description:''}))
-              toast.success(`${tx.type==='expense'?'Expense':'Refund'} added`)
+              try {
+                const newTx = {
+                  type: tx.type,
+                  amount: -Math.abs(amt),
+                  description: tx.description || undefined,
+                  date: new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString(),
+                }
+                // Add to local store
+                addTransaction(newTx)
+                // Persist to Supabase - get the created transaction from store
+                const transaction = useStore.getState().transactions.find(t => 
+                  t.date === newTx.date && t.amount === newTx.amount && t.type === newTx.type
+                )
+                if (transaction) {
+                  const { error } = await supabase.from('transactions').insert([{
+                    type: transaction.type,
+                    amount: transaction.amount,
+                    year: tx.year,
+                    month: tx.month,
+                    week: tx.week,
+                    description: transaction.description,
+                  }])
+                  if (error) throw error
+                }
+                setTx(t=>({...t, amount:'', description:''}))
+                toast.success(`${tx.type==='expense'?'Expense':'Refund'} added`)
+              } catch (err: any) {
+                console.error('Save error:', err)
+                console.error('Error details:', err?.message, err?.code, err?.details)
+                toast.error(err?.message || 'Failed to add transaction')
+              }
             }}>Add {tx.type==='expense'?'Expense':'Refund'}</button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase'
 import { useMemo, useState, useEffect } from 'react'
 import { useStore } from '@/store'
 import { formatCurrency } from '@/lib/utils'
@@ -9,7 +10,59 @@ import { toast } from '@/components/ToastContainer'
 type Row = { id: string; date: string; month: number; year: number; type: string; week?: number; description?: string; amount: number; source: 'report'|'tx' }
 
 export default function Records() {
-  const { reports, transactions, deleteReport, deleteTransaction, updateReport, updateTransaction } = useStore()
+  const [loading, setLoading] = useState(true)
+  const storeReports = useStore(s => s.reports)
+  const storeTransactions = useStore(s => s.transactions)
+  const deleteReport = useStore(s => s.deleteReport)
+  const deleteTransaction = useStore(s => s.deleteTransaction)
+  const updateReport = useStore(s => s.updateReport)
+  const updateTransaction = useStore(s => s.updateTransaction)
+
+  useEffect(() => {
+    const fetchWeeklyReports = async () => {
+      setLoading(true)
+
+      const { data, error } = await supabase
+        .from('weekly_reports')
+        .select('*')
+        .order('week_start', { ascending: false })
+
+      if (error) {
+        console.error(error)
+        toast.error('Failed to load weekly reports')
+      } else {
+        // Transform Supabase column names to match WeeklyReport type
+        const transformedReports = (data || []).map((r: any) => ({
+          id: r.id,
+          year: r.year,
+          month: r.month,
+          week: r.week || 1,
+          washer1: r.washer1_sales || 0,
+          washer2: r.washer2_sales || 0,
+          dryer1: r.dryer1_sales || 0,
+          dryer2: r.dryer2_sales || 0,
+          online: r.online_sales || 0,
+          offline: r.offline_sales || 0,
+          totalSales: r.total_sales || 0,
+          moneyCollected: r.money_collected || 0,
+          notes: r.notes,
+          createdAt: r.created_at || new Date().toISOString(),
+        }))
+        // Sync transformed reports into Zustand store
+        useStore.setState({ reports: transformedReports })
+        console.log('Supabase weekly_reports:', transformedReports)
+      }
+
+      setLoading(false)
+    }
+
+    fetchWeeklyReports()
+  }, [])
+
+  // Use store reports and transactions
+  const reports = storeReports
+  const transactions = storeTransactions
+
   const rows: Row[] = useMemo(()=>{
     const a: Row[] = reports.map(r=>{
       // Use the report's selected month/year (not createdAt) for display/sorting
@@ -147,9 +200,39 @@ export default function Records() {
           <button type="button" title="Go to next page" className="btn btn-secondary" disabled={page >= pageCount-1 || pageCount===0} onClick={()=> setPage(p=>Math.min(pageCount-1, p+1))}>Next</button>
         </div>
         {editing && (
-          <EditModal row={editing} onClose={()=> setEditing(null)} onSave={(updated)=>{
-            if (editing.source==='report') { updateReport(updated as any); toast.success('Weekly report updated') }
-            else { updateTransaction(updated as any); toast.success('Transaction updated') }
+          <EditModal row={editing} onClose={()=> setEditing(null)} onSave={async (updated)=>{
+            try {
+              if (editing.source==='report') { 
+                updateReport(updated as any)
+                // Sync to Supabase with correct column names
+                const { monthWeekRange } = await import('@/lib/utils')
+                const weekRange = monthWeekRange((updated as any).year, (updated as any).month, (updated as any).week)
+                const { error } = await supabase.from('weekly_reports').update({
+                  year: (updated as any).year,
+                  month: (updated as any).month,
+                  week_start: weekRange.from?.toISOString().split('T')[0],
+                  week_end: weekRange.to?.toISOString().split('T')[0],
+                  washer1_sales: (updated as any).washer1,
+                  washer2_sales: (updated as any).washer2,
+                  dryer1_sales: (updated as any).dryer1,
+                  dryer2_sales: (updated as any).dryer2,
+                  online_sales: (updated as any).online,
+                  offline_sales: (updated as any).offline,
+                  money_collected: (updated as any).moneyCollected,
+                  total_sales: (updated as any).totalSales,
+                  notes: (updated as any).notes,
+                }).eq('id', (updated as any).id)
+                if (error) throw error
+                toast.success('Weekly report updated') 
+              }
+              else { 
+                updateTransaction(updated as any)
+                toast.success('Transaction updated') 
+              }
+            } catch (err) {
+              console.error('Save error:', err)
+              toast.error('Failed to save changes')
+            }
             setEditing(null)
           }} />
         )}
@@ -158,8 +241,9 @@ export default function Records() {
   )
 }
 
-function EditModal({ row, onClose, onSave }: { row: Row, onClose: ()=>void, onSave: (updated: WeeklyReport|Transaction)=>void }) {
+function EditModal({ row, onClose, onSave }: { row: Row, onClose: ()=>void, onSave: (updated: WeeklyReport|Transaction)=>Promise<void> }) {
   const { reports, transactions } = useStore()
+  const [saving, setSaving] = useState(false)
   if (row.source==='report') {
     const orig = reports.find(r=>r.id===row.id) as WeeklyReport
     const [form, setForm] = useState<WeeklyReport>({...orig})
@@ -230,22 +314,27 @@ function EditModal({ row, onClose, onSave }: { row: Row, onClose: ()=>void, onSa
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={()=> {
+          <button className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button className="btn-primary" disabled={saving} onClick={async ()=> {
             const keys = ['washer1','washer2','dryer1','dryer2','online','offline','moneyCollected']
             const nextErr: {[k:string]: string} = {}
             keys.forEach((k)=>{ const v = vals[k]; if (v!=='' && !isFinite(Number(v))) nextErr[k] = 'Must be a number' })
             setErrs(nextErr)
             if (Object.keys(nextErr).length>0) return
-            const num = (k:string)=> (vals[k]===''?0:Number(vals[k]))
-            onSave({ ...form,
-              washer1: num('washer1'), washer2: num('washer2'),
-              dryer1: num('dryer1'), dryer2: num('dryer2'),
-              online: num('online'), offline: num('offline'),
-              moneyCollected: num('moneyCollected'),
-              totalSales: num('online') + num('offline')
-            })
-          }}>Save</button>
+            setSaving(true)
+            try {
+              const num = (k:string)=> (vals[k]===''?0:Number(vals[k]))
+              await onSave({ ...form,
+                washer1: num('washer1'), washer2: num('washer2'),
+                dryer1: num('dryer1'), dryer2: num('dryer2'),
+                online: num('online'), offline: num('offline'),
+                moneyCollected: num('moneyCollected'),
+                totalSales: num('online') + num('offline')
+              })
+            } finally {
+              setSaving(false)
+            }
+          }}>{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </Modal>
     )
@@ -301,14 +390,19 @@ function EditModal({ row, onClose, onSave }: { row: Row, onClose: ()=>void, onSa
           </div>
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" title="Cancel editing" className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button type="button" title="Save transaction" className="btn-primary" onClick={()=> { 
+          <button type="button" title="Cancel editing" className="btn-secondary" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="button" title="Save transaction" className="btn-primary" disabled={saving} onClick={async ()=> { 
             if (amtStr.trim()==='' || !isFinite(Number(amtStr))) { setAmtErr('Amount must be a number'); return }
             const rng = monthWeekRange(tYear, tMonth, tWeek)
             if (!rng.valid || !rng.from) { toast.error('Selected week is not valid for chosen month.'); return }
-            const n = -Math.abs(Number(amtStr))
-            onSave({ ...form, date: rng.from.toISOString().slice(0,10), amount: n }) 
-          }}>Save</button>
+            setSaving(true)
+            try {
+              const n = -Math.abs(Number(amtStr))
+              await onSave({ ...form, date: rng.from.toISOString().slice(0,10), amount: n })
+            } finally {
+              setSaving(false)
+            }
+          }}>{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </Modal>
     )

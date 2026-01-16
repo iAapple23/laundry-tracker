@@ -734,8 +734,8 @@ function TxEditModal({ tx, onClose, onSave }: { tx: Transaction, onClose: ()=>vo
             if (amtStr.trim()==='' || !isFinite(Number(amtStr))) { setAmtErr('Amount must be a number'); return }
             const rng = monthWeekRange(tYear, tMonth, tWeek)
             if (!rng.valid || !rng.from) { toast.error('Selected week is not valid for chosen month.'); return }
-            const n = Number(amtStr)
-            onSave({ ...form, date: rng.from.toISOString().slice(0,10), amount: n })
+            const n = -Math.abs(Number(amtStr))
+            onSave({ ...form, date: rng.from.toISOString(), amount: n })
           }}>Save</button>
         </div>
       </div>

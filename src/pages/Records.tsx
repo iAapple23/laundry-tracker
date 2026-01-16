@@ -19,20 +19,27 @@ export default function Records() {
   const updateTransaction = useStore(s => s.updateTransaction)
 
   useEffect(() => {
-    const fetchWeeklyReports = async () => {
+    const fetchData = async () => {
       setLoading(true)
 
-      const { data, error } = await supabase
+      // Fetch weekly reports
+      const { data: reportsData, error: reportsError } = await supabase
         .from('weekly_reports')
         .select('*')
         .order('week_start', { ascending: false })
 
-      if (error) {
-        console.error(error)
+      // Fetch transactions
+      const { data: txData, error: txError } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (reportsError) {
+        console.error(reportsError)
         toast.error('Failed to load weekly reports')
       } else {
         // Transform Supabase column names to match WeeklyReport type
-        const transformedReports = (data || []).map((r: any) => ({
+        const transformedReports = (reportsData || []).map((r: any) => ({
           id: r.id,
           year: r.year,
           month: r.month,
@@ -53,10 +60,28 @@ export default function Records() {
         console.log('Supabase weekly_reports:', transformedReports)
       }
 
+      if (txError) {
+        console.error(txError)
+        toast.error('Failed to load transactions')
+      } else {
+        // Transform Supabase transactions to match Transaction type
+        const transformedTransactions = (txData || []).map((t: any) => ({
+          id: t.id,
+          date: t.date || new Date().toISOString().split('T')[0],
+          type: t.type as 'expense' | 'refund',
+          amount: t.amount || 0,
+          description: t.description,
+          createdAt: t.created_at || new Date().toISOString(),
+        }))
+        // Sync transformed transactions into Zustand store
+        useStore.setState({ transactions: transformedTransactions })
+        console.log('Supabase transactions:', transformedTransactions)
+      }
+
       setLoading(false)
     }
 
-    fetchWeeklyReports()
+    fetchData()
   }, [])
 
   // Use store reports and transactions

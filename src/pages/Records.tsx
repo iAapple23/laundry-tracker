@@ -206,12 +206,31 @@ export default function Records() {
                       {menuOpen===r.id && (
                         <div className="absolute right-0 mt-2 w-36 rounded-md bg-white border border-black/10 shadow-card dark:bg-gray-900 dark:border-white/10 z-10" onClick={(e)=> e.stopPropagation()}>
                           <button type="button" title="Edit record" className="w-full text-left px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10" onClick={()=>{ setEditing(r); setMenuOpen(null) }}>Edit</button>
-                          <button type="button" title="Delete record" className="w-full text-left px-3 py-2 text-red-600 hover:bg-black/5 dark:hover:bg-white/10" onClick={()=>{ 
+                          <button type="button" title="Delete record" className="w-full text-left px-3 py-2 text-red-600 hover:bg-black/5 dark:hover:bg-white/10" onClick={async ()=>{ 
                             setMenuOpen(null);
                             const label = r.type;
                             if (window.confirm(`Delete this ${label}? This action cannot be undone.`)) {
-                              if (r.source==='report') { deleteReport(r.id); toast.success('Record deleted') }
-                              else { deleteTransaction(r.id); toast.success('Record deleted') }
+                              try {
+                                if (r.source==='report') { 
+                                  // Delete from Supabase
+                                  const { error } = await supabase.from('weekly_reports').delete().eq('id', r.id)
+                                  if (error) throw error
+                                  // Delete from local store
+                                  deleteReport(r.id)
+                                  toast.success('Record deleted') 
+                                }
+                                else { 
+                                  // Delete from Supabase
+                                  const { error } = await supabase.from('transactions').delete().eq('id', r.id)
+                                  if (error) throw error
+                                  // Delete from local store
+                                  deleteTransaction(r.id)
+                                  toast.success('Record deleted') 
+                                }
+                              } catch (err: any) {
+                                console.error('Delete error:', err)
+                                toast.error('Failed to delete record')
+                              }
                             }
                           }}>Delete</button>
                         </div>
@@ -273,11 +292,30 @@ export default function Records() {
                   </button>
                   <button 
                     className="flex-1 btn btn-sm bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 text-xs py-1"
-                    onClick={()=>{ 
+                    onClick={async ()=>{ 
                       const label = r.type;
                       if (window.confirm(`Delete this ${label}? This action cannot be undone.`)) {
-                        if (r.source==='report') { deleteReport(r.id); toast.success('Record deleted') }
-                        else { deleteTransaction(r.id); toast.success('Record deleted') }
+                        try {
+                          if (r.source==='report') { 
+                            // Delete from Supabase
+                            const { error } = await supabase.from('weekly_reports').delete().eq('id', r.id)
+                            if (error) throw error
+                            // Delete from local store
+                            deleteReport(r.id)
+                            toast.success('Record deleted') 
+                          }
+                          else { 
+                            // Delete from Supabase
+                            const { error } = await supabase.from('transactions').delete().eq('id', r.id)
+                            if (error) throw error
+                            // Delete from local store
+                            deleteTransaction(r.id)
+                            toast.success('Record deleted') 
+                          }
+                        } catch (err: any) {
+                          console.error('Delete error:', err)
+                          toast.error('Failed to delete record')
+                        }
                       }
                     }}
                   >
